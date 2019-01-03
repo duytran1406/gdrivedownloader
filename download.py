@@ -39,9 +39,9 @@ def main():
     print colored('    |       ||       ||   _   || | |   ||       ||       ||   _   ||       ||   |___ |   |  | |    ', 'cyan')
     print colored('    |______| |_______||__| |__||_|  |__||_______||_______||__| |__||______| |_______||___|  |_|    ', 'cyan')
     print colored('===================================================================================================', 'white')
-    print colored('                                                                                  Version: ', 'yellow'), (1.0)
-    print colored('                                                                                  Author : ', 'yellow'), ('Blavk')
-    print colored('                                                                                  Github : ', 'yellow'), (1.0)
+    print colored('                                         Version: ', 'yellow'), (1.0)
+    print colored('                                         Author : ', 'yellow'), ('Blavk')
+    print colored('                                         Github : ', 'yellow'), ('https://github.com/duytran1406/gdrivedownloader')
     store = file.Storage('token.json')
     creds = store.get()
     if not creds or creds.invalid:
@@ -122,8 +122,11 @@ def download_file(service, file_id, location, filename):
     while done is False:
         status, done = downloader.next_chunk()
         if status:
-            print 'Download %d%%.' % int(status.progress() * 100)
-        print colored(('%s downloaded!' % filename), 'green')
+            #print '\rDownload {}%.'.format(int(status.progress() * 100)),
+            print int(status.progress() * 100)," percent complete         \r",
+            #sys.stdout.flush()
+    print ""
+    print colored(('%s downloaded!' % filename), 'green')
 def cls():
     os.system('cls' if os.name=='nt' else 'clear')
 
