@@ -9,7 +9,7 @@ from oauth2client import file, client, tools
 import io
 import os
 import sys
-
+import re
 
 # If modifying these scopes, delete the file token.json.
 SCOPES = 'https://www.googleapis.com/auth/drive'
@@ -86,7 +86,7 @@ def download_folder(service, folder_id, location, folder_name):
     result = []
     files = service.files().list(
             q="'{}' in parents".format(folder_id),
-            fields='files(id, name, mimeType)').execute()
+            fields='files(id, name, mimeType, size)').execute()
     result.extend(files['files'])
     result = sorted(result, key=lambda k: k[u'name'])
 
@@ -99,15 +99,22 @@ def download_folder(service, folder_id, location, folder_name):
     current = 1
     for item in result:
         file_id = item[u'id']
-        filename = item[u'name']
+        filename = no_accent_vietnamese(item[u'name'])
         mime_type = item[u'mimeType']
         print '- ', colored(filename, 'cyan'), colored(mime_type, 'cyan'), '({}/{})'.format(current, total)
         if mime_type == 'application/vnd.google-apps.folder':
             download_folder(service, file_id, location, filename)
-        elif not os.path.isfile(location + filename):
+        elif not os.path.isfile('{}{}'.format(location, filename)):
             download_file(service, file_id, location, filename)
         else:
-            print colored('File existed!', 'magenta')
+            remote_size = item[u'size']
+            local_size = os.path.getsize('{}{}'.format(location, filename))
+            if (str(remote_size) == str(local_size)):
+                print colored('File existed!', 'magenta')
+            else:
+                print colored('Local File corrupted', 'red')
+                os.remove('{}{}'.format(location, filename))
+                download_file(service, file_id, location, filename)
         current += 1
         percent = float((current-1))/float(total)*100
         print colored("%.2f percent completed!" % percent,'green')
@@ -115,8 +122,7 @@ def download_folder(service, folder_id, location, folder_name):
 
 def download_file(service, file_id, location, filename):
     request = service.files().get_media(fileId=file_id)
-    fh = io.FileIO(location + filename, 'wb')
-    #downloader = MediaIoBaseDownload(fh, request, 1024 * 1024 * 1024)
+    fh = io.FileIO('{}{}'.format(location, filename), 'wb')
     downloader = MediaIoBaseDownload(fh, request,chunksize=1024*1024)
     done = False
     while done is False:
@@ -129,6 +135,23 @@ def download_file(service, file_id, location, filename):
     print colored(('%s downloaded!' % filename), 'green')
 def cls():
     os.system('cls' if os.name=='nt' else 'clear')
+def no_accent_vietnamese(s):
+    #s = s.decode('utf-8', errors='ignore')
+    s = re.sub(u'[àáạảãâầấậẩẫăằắặẳẵ]', 'a', s)
+    s = re.sub(u'[ÀÁẠẢÃĂẰẮẶẲẴÂẦẤẬẨẪ]', 'A', s)
+    s = re.sub(u'[èéẹẻẽêềếệểễ]', 'e', s)
+    s = re.sub(u'[ÈÉẸẺẼÊỀẾỆỂỄ]', 'E', s)
+    s = re.sub(u'[òóọỏõôồốộổỗơờớợởỡ]', 'o', s)
+    s = re.sub(u'[ÒÓỌỎÕÔỒỐỘỔỖƠỜỚỢỞỠ]', 'O', s)
+    s = re.sub(u'[ìíịỉĩ]', 'i', s)
+    s = re.sub(u'[ÌÍỊỈĨ]', 'I', s)
+    s = re.sub(u'[ùúụủũưừứựửữ]', 'u', s)
+    s = re.sub(u'[ƯỪỨỰỬỮÙÚỤỦŨ]', 'U', s)
+    s = re.sub(u'[ỳýỵỷỹ]', 'y', s)
+    s = re.sub(u'[ỲÝỴỶỸ]', 'Y', s)
+    s = re.sub(u'[Đ]', 'D', s)
+    s = re.sub(u'[đ]', 'd', s)
+    return s.encode('utf-8')
 
 if __name__ == '__main__':
     main()
